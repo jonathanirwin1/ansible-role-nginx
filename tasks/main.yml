@@ -1,0 +1,64 @@
+---
+- name: Ensure apt cache is updated
+  apt: 
+    update_cache: yes
+  changed_when: false
+
+- name: Ensure pre-requisites are installed
+  apt: 
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - libpcre3
+    - libpcre3-dev
+    - zlib1g
+    - zlib1g-dev
+    - openssl
+    - libssl-dev
+    - gcc  
+
+- name: Check for installed nginx version
+  shell: "{{ nginx_sbin_path }} -V"
+  register: nginx_version_info
+  failed_when: false
+  changed_when: false
+
+- name: Calculate if nginx needs to be installed
+  set_fact:
+    nginx_requires_installation: "{{ nginx_version_info.stdout == '' }}"
+
+- name: Print requires installation variable
+  debug: 
+    msg: "Requires installation: {{ nginx_requires_installation }}"        
+
+- name: Ensure directory is created to download nginx source into
+  file: 
+    path: "{{ nginx_download_directory }}"
+    state: directory  
+
+# download source (if new version needed)
+- name: Download souce code
+  unarchive: 
+    remote_src: yes
+    dest: "{{ nginx_download_directory }}"
+    src: "{{ nginx_download_url }}"
+
+- name: Set Configure string
+  set_fact:
+    configure: > 
+      ./configure 
+      {{ nginx_with_modules | map("regex_replace", "^(.*)$", "--with-\1") | join(" ") }}
+      {{ nginx_without_modules | map("regex_replace", "^(.*)$", "--without-\1") | join(" ") }}
+
+- name: display configure string    
+  debug: 
+    msg: "{{ configure  }}"
+
+# build source (if new version needed)
+- name: Ensure configure script is run with correct parameters
+  shell: "{{ configure }}"
+  args:
+    chdir: "{{ nginx_download_directory }}/nginx-{{ nginx_version }}"
+# setup config files (not sure how to pass this into role)
+
+# start and enable service

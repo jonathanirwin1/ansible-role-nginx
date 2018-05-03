@@ -1,0 +1,16 @@
+galaxy_info:
+  author: Jonny Irwin
+  description: A role to install Nginx from source with the ability to include custom modules
+  
+  license: MIT
+  min_ansible_version: 1.2
+  
+  platforms:
+  - name: Ubuntu
+    versions:
+     - all
+
+  galaxy_tags: 
+    - nginx
+
+dependencies: []
