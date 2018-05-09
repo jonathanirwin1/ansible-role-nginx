@@ -4,7 +4,7 @@
 nginx_version: 1.14.0
 nginx_download_url: http://nginx.org/download/nginx-{{ nginx_version }}.tar.gz
 nginx_download_directory: /opt/nginx_source
-nginx_custom_modules_directory: /opt/nginx_modules
+nginx_extra_modules_dir: /opt/nginx_modules
 
 nginx_prefix: /usr/local/nginx
 nginx_sbin_path: "{{ nginx_prefix }}/sbin/nginx"
@@ -42,4 +42,5 @@ nginx_with_modules:
   - http_slice_module
   - http_stub_status_module    
 nginx_without_modules: []
-custom_modules: []
+nginx_extra_modules: 
+  spnego: https://github.com/jonnyirwin/spnego-http-auth-nginx-module.git  

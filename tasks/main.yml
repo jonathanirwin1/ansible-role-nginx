@@ -9,13 +9,31 @@
     name: "{{ item }}"
     state: present
   with_items:
+    - git      
     - libpcre3
     - libpcre3-dev
     - zlib1g
     - zlib1g-dev
     - openssl
     - libssl-dev
-    - gcc  
+    - libperl-dev  
+    - build-essential  
+    - libxml2-dev
+    - libxslt1-dev
+    - libgd-dev
+    - libgeoip-dev
+    - libkrb5-dev
+
+- name: Print dict
+  debug:
+    msg: "{{ item.key}} --- {{ item.value }}"
+  with_dict: "{{ nginx_extra_modules }}"   
+
+- name: Download 3rd party NGINX modules
+  git: 
+    repo: "{{ item.value }}"
+    dest: "{{ nginx_extra_modules_dir }}/{{ item.key }}"
+  with_dict: "{{ nginx_extra_modules }}" 
 
 - name: Check for installed nginx version
   shell: "{{ nginx_sbin_path }} -V"
@@ -36,8 +54,7 @@
     path: "{{ nginx_download_directory }}"
     state: directory  
 
-# download source (if new version needed)
-- name: Download souce code
+- name: Download source code
   unarchive: 
     remote_src: yes
     dest: "{{ nginx_download_directory }}"
@@ -47,18 +64,45 @@
   set_fact:
     configure: > 
       ./configure 
+      --prefix={{ nginx_prefix }}
+      --sbin-path={{ nginx_sbin_path }}
+      --modules-path={{ nginx_modules_path }}
+      --conf-path={{ nginx_conf_path }}
+      --error-log-path={{ nginx_error_log_path }}
+      --pid-path={{ nginx_pid_path }}
+      --lock-path={{ nginx_lock_path }}
+      --user={{ nginx_user }}
+      --group={{ nginx_group }}
       {{ nginx_with_modules | map("regex_replace", "^(.*)$", "--with-\1") | join(" ") }}
       {{ nginx_without_modules | map("regex_replace", "^(.*)$", "--without-\1") | join(" ") }}
+      {{ nginx_extra_modules | map("regex_replace", "^(.*)$", "--add-module={{ nginx_extra_modules_dir }}/\1") | join(" ") }} 
 
-- name: display configure string    
+- name: Display configure string
   debug: 
-    msg: "{{ configure  }}"
+    msg: "{{ configure }}"
 
-# build source (if new version needed)
 - name: Ensure configure script is run with correct parameters
   shell: "{{ configure }}"
   args:
     chdir: "{{ nginx_download_directory }}/nginx-{{ nginx_version }}"
-# setup config files (not sure how to pass this into role)
 
-# start and enable service
+- name: Make
+  shell: make
+  args: 
+    chdir: "{{ nginx_download_directory }}/nginx-{{ nginx_version }}"  
+
+- name: Make install
+  shell: make install
+  args:
+    chdir: "{{ nginx_download_directory }}/nginx-{{ nginx_version }}"  
+
+- name: Create nginx systemd configuration
+  template:   
+    src: ../templates/nginx.service.j2
+    dest: /etc/systemd/system/nginx.service
+
+- name: Enable nginx service
+  systemd:
+    enabled: yes
+    name: nginx.service
+    state: started
